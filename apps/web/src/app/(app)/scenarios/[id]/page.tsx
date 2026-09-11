@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { ScenarioDetail } from "@/app/scenarios/[id]/scenario-detail";
+import { ScenarioDetail } from "@/app/(app)/scenarios/[id]/scenario-detail";
 
 export default async function ScenarioDetailPage({ params }: PageProps<"/scenarios/[id]">) {
   const session = await auth();

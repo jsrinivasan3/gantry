@@ -2,8 +2,22 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
+import { AlertCircle } from "lucide-react";
 
 import { trpc } from "@/lib/trpc/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface JobLike {
   id: string;
@@ -16,6 +30,15 @@ interface JobLike {
 }
 
 const STATUSES = ["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "UNSCHEDULED"] as const;
+const STATUS_LABELS: Record<(typeof STATUSES)[number], string> = {
+  PLANNED: "Planned",
+  IN_PROGRESS: "In progress",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+  UNSCHEDULED: "Unscheduled (needs manual date)",
+};
+
+const UNASSIGNED = "__unassigned__";
 
 export function JobEditPopover({
   job,
@@ -31,7 +54,7 @@ export function JobEditPopover({
 }) {
   const [start, setStart] = useState(format(new Date(job.scheduledStart), "yyyy-MM-dd"));
   const [end, setEnd] = useState(format(new Date(job.scheduledEnd), "yyyy-MM-dd"));
-  const [teamId, setTeamId] = useState(job.teamId ?? "");
+  const [teamId, setTeamId] = useState(job.teamId ?? UNASSIGNED);
   const [status, setStatus] = useState(job.status);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,99 +69,92 @@ export function JobEditPopover({
   });
   const isPending = updateScenarioJob.isPending || updateMainJob.isPending;
 
+  function handleSave() {
+    setError(null);
+    const payload = {
+      jobId: job.id,
+      scheduledStart: new Date(start),
+      scheduledEnd: new Date(end),
+      teamId: teamId === UNASSIGNED ? null : teamId,
+      status: status as (typeof STATUSES)[number],
+    };
+    if (scenarioId) {
+      updateScenarioJob.mutate({ scenarioId, ...payload });
+    } else {
+      updateMainJob.mutate(payload);
+    }
+  }
+
   return (
-    <div
-      className="fixed inset-0 z-20 flex items-center justify-center bg-black/30"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="job-edit-title"
-        className="w-80 rounded-lg border bg-background p-4 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 id="job-edit-title" className="mb-1 text-sm font-semibold">
-          {job.title}
-        </h3>
-        <p className="mb-3 text-xs text-muted-foreground">{job.asset.displayName}</p>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{job.title}</DialogTitle>
+          <DialogDescription>{job.asset.displayName}</DialogDescription>
+        </DialogHeader>
 
-        <div className="flex flex-col gap-2 text-sm">
-          <label className="flex flex-col gap-0.5">
-            Start
-            <input
-              type="date"
-              className="rounded border px-2 py-1"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-0.5">
-            End
-            <input
-              type="date"
-              className="rounded border px-2 py-1"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-0.5">
-            Team
-            <select
-              className="rounded border px-2 py-1"
-              value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
-            >
-              <option value="">Unassigned</option>
-              {teamsQuery.data?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-0.5">
-            Status
-            <select className="rounded border px-2 py-1" value={status} onChange={(e) => setStatus(e.target.value)}>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="job-start">Start</Label>
+            <Input id="job-start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="job-end">End</Label>
+            <Input id="job-end" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+          </div>
+          <div className="col-span-2 flex flex-col gap-1.5">
+            <Label>Team</Label>
+            <Select value={teamId} onValueChange={(v) => setTeamId(v ?? UNASSIGNED)}>
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {(value: string) =>
+                    value === UNASSIGNED ? "Unassigned" : (teamsQuery.data?.find((t) => t.id === value)?.name ?? "Unassigned")
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                {teamsQuery.data?.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2 flex flex-col gap-1.5">
+            <Label>Status</Label>
+            <Select value={status} onValueChange={(v) => v && setStatus(v)}>
+              <SelectTrigger className="w-full">
+                <SelectValue>{(value: string) => STATUS_LABELS[value as (typeof STATUSES)[number]] ?? value}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-        <div className="mt-4 flex justify-end gap-2 text-sm">
-          <button className="rounded border px-3 py-1.5" onClick={onClose}>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            className="rounded bg-black px-3 py-1.5 text-white disabled:opacity-50"
-            disabled={isPending}
-            onClick={() => {
-              setError(null);
-              const payload = {
-                jobId: job.id,
-                scheduledStart: new Date(start),
-                scheduledEnd: new Date(end),
-                teamId: teamId || null,
-                status: status as (typeof STATUSES)[number],
-              };
-              if (scenarioId) {
-                updateScenarioJob.mutate({ scenarioId, ...payload });
-              } else {
-                updateMainJob.mutate(payload);
-              }
-            }}
-          >
+          </Button>
+          <Button onClick={handleSave} disabled={isPending}>
             {isPending ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

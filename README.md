@@ -33,8 +33,9 @@ called out explicitly in the UI, not just here:
 
 ## Stack
 
-Next.js 16 (App Router) + TypeScript, Tailwind, tRPC, Prisma + PostgreSQL,
-Auth.js (NextAuth v5), TanStack Query, Recharts, date-fns.
+Next.js 16 (App Router) + TypeScript, Tailwind + shadcn/ui (Base UI
+primitives), tRPC, Prisma + PostgreSQL, Auth.js (NextAuth v5), TanStack
+Query, Recharts, date-fns.
 
 ## Prerequisites
 

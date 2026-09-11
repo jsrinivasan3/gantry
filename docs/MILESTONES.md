@@ -1,7 +1,55 @@
 # Gantry — Build Plan & Milestones
 
 **Status: all 6 milestones complete** — spec §16's full definition of done
-has been live-verified end to end (see M6's exit check below).
+has been live-verified end to end (see M6's exit check below). A post-M6
+design pass (below) then rebuilt the UI on shadcn/ui.
+
+## Post-M6 — UI/UX design pass ✅
+
+The original UI was functional but plain (raw HTML form elements, no
+component system, a bare-bones Gantt). Rebuilt on `shadcn/ui`:
+
+- **App shell**: a real sidebar (`src/components/app-shell/`) with
+  collapsible nav, active-route highlighting, a user menu (avatar, role
+  badge, sign out), and a breadcrumb header — replacing the old plain-link
+  nav repeated on every page. Routes moved into an `(app)` route group so
+  the shell is one shared layout instead of copy-pasted per page.
+- **Gantt, rebuilt** (`src/components/gantt/`): sticky header + sticky
+  device column (both axes scroll independently and correctly), zoom
+  levels, live search, per-job-type filter chips, collapsible building
+  groups with an expand/collapse-all toggle, a "jump to today" button with
+  auto-scroll on load, rich hover tooltips (job type/status/dates/team/
+  warnings), and device-type icons. Editing moved from a hand-rolled
+  overlay to a proper shadcn `Dialog`.
+- Every page restyled with `Card`/`Table`/`Badge`/`Tabs`/`Select`/`Dialog`;
+  toast notifications (`sonner`) replaced silent failures and raw inline
+  error text; loading states use `Skeleton` instead of "Loading…" text;
+  empty states get an icon + explanation instead of a blank list.
+- **Real bugs found and fixed during this pass** (this shadcn install
+  resolved to a **Base UI**-based major version, not the Radix-based one
+  from training data — a second "not the library you know" surprise on top
+  of Next 16/Prisma 8/Zod 4 — so several API-shape bugs surfaced only at
+  runtime, not typecheck):
+  - `asChild` doesn't exist in this version — polymorphism is a `render={<El/>}`
+    prop. Every `Button`/`SidebarMenuButton`/`DropdownMenuTrigger` wrapping a
+    `<Link>` needed converting.
+  - `Select.Value` doesn't auto-derive a label from the matching `SelectItem`
+    like Radix did — it shows the raw value unless given a `children` render
+    function. Fixed on the two selects that had this (team/status pickers).
+  - `Button` warns (and `DropdownMenuLabel` throws outright — `MenuGroupContext
+    is missing`) when composed in ways this version doesn't support: a
+    `render`-based non-button target needs `nativeButton={false}`, and
+    `DropdownMenuLabel` requires being inside a `DropdownMenuGroup` — the
+    static user-info block in the account menu wasn't, so it crashed
+    on open. Replaced with a plain styled `div` instead of forcing group
+    semantics onto content that isn't actually a group label.
+  - A `session!.user` non-null assertion on the dashboard crashed
+    intermittently (a request without a valid session reached the page
+    despite the layout's own redirect); made the page redirect defensively
+    itself rather than trusting the layout ran first.
+  - All caught via actually loading every page in the browser and reading
+    console/server errors after each change — not from typecheck, which
+    passed the whole time.
 
 Status legend: ⬜ not started · 🔶 in progress · ✅ done
 

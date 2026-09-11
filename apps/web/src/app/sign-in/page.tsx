@@ -1,46 +1,50 @@
 import { redirect } from "next/navigation";
+import { Building2 } from "lucide-react";
 
-import { signIn } from "@/auth";
+import { auth } from "@/auth";
 import { appConfig } from "@/config/app";
+import { SignInForm } from "@/app/sign-in/sign-in-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  const session = await auth();
+  if (session?.user) redirect("/");
+
   return (
-    <main className="mx-auto flex max-w-sm flex-1 flex-col justify-center gap-6 px-6">
-      <h1 className="text-2xl font-semibold">Sign in to {appConfig.displayName}</h1>
-      <form
-        className="flex flex-col gap-3"
-        action={async (formData: FormData) => {
-          "use server";
-          try {
-            await signIn("credentials", {
-              email: formData.get("email"),
-              password: formData.get("password"),
-              redirect: false,
-            });
-          } catch {
-            redirect("/sign-in?error=1");
-          }
-          redirect("/");
+    <main className="relative flex min-h-svh flex-col items-center justify-center gap-8 overflow-hidden bg-muted/40 px-6">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, var(--color-border) 1px, transparent 0)",
+          backgroundSize: "28px 28px",
+          maskImage: "radial-gradient(ellipse 60% 60% at 50% 0%, black 40%, transparent 100%)",
         }}
-      >
-        <input
-          className="rounded border px-3 py-2"
-          name="email"
-          type="email"
-          placeholder="Email"
-          required
-        />
-        <input
-          className="rounded border px-3 py-2"
-          name="password"
-          type="password"
-          placeholder="Password"
-          required
-        />
-        <button className="rounded bg-black px-3 py-2 text-white" type="submit">
-          Sign in
-        </button>
-      </form>
+      />
+
+      <div className="flex items-center gap-2.5">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+          <Building2 className="size-5.5" />
+        </div>
+        <div className="flex flex-col leading-tight">
+          <span className="text-lg font-semibold">{appConfig.displayName}</span>
+          <span className="text-xs text-muted-foreground">NYC facilities compliance planning</span>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-sm shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-xl">Sign in</CardTitle>
+          <CardDescription>Use a seeded demo account or your own credentials.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SignInForm />
+        </CardContent>
+      </Card>
+
+      <p className="max-w-sm text-center text-xs text-muted-foreground">
+        Real elevator &amp; boiler compliance data from NYC Open Data, planning tools layered on top.
+      </p>
     </main>
   );
 }
