@@ -1,6 +1,7 @@
 import type { JobType } from "@prisma/client";
 
 import { prisma } from "@/server/db/client";
+import { attachJobParts } from "@/server/scheduling/attachJobParts";
 
 const ELEVATOR_RULE_TYPES: JobType[] = ["CAT1_TEST", "CAT5_TEST", "PERIODIC_INSPECTION"];
 
@@ -78,13 +79,17 @@ export async function deriveElevatorSchedule() {
         scheduledStart: nextDue,
         scheduledEnd: nextDue,
       };
+      let jobId: string;
       if (existing) {
         await prisma.job.update({ where: { id: existing.id }, data });
+        jobId = existing.id;
         updated += 1;
       } else {
-        await prisma.job.create({ data });
+        const job = await prisma.job.create({ data });
+        jobId = job.id;
         created += 1;
       }
+      await attachJobParts(jobId, rule.jobType);
     }
   }
 

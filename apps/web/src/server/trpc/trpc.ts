@@ -39,7 +39,7 @@ export function requireRole(minRole: Role) {
     if (ROLE_RANK[userRole] < ROLE_RANK[minRole]) {
       throw new TRPCError({ code: "FORBIDDEN" });
     }
-    return next({ ctx });
+    return next({ ctx: { ...ctx, session: { ...ctx.session, user: ctx.session.user } } });
   });
 }
 

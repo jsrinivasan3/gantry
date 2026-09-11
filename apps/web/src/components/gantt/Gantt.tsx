@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { addDays, differenceInCalendarDays, format, subDays } from "date-fns";
 
 import { trpc } from "@/lib/trpc/client";
+import { JobEditPopover } from "@/components/gantt/JobEditPopover";
 
-const JOB_TYPE_COLORS: Record<string, string> = {
+export const JOB_TYPE_COLORS: Record<string, string> = {
   CAT1_TEST: "#2563eb",
   CAT5_TEST: "#7c3aed",
   PERIODIC_INSPECTION: "#0891b2",
@@ -16,7 +17,7 @@ const JOB_TYPE_COLORS: Record<string, string> = {
   OTHER: "#6b7280",
 };
 
-const JOB_TYPE_LABELS: Record<string, string> = {
+export const JOB_TYPE_LABELS: Record<string, string> = {
   CAT1_TEST: "CAT1",
   CAT5_TEST: "CAT5",
   PERIODIC_INSPECTION: "Periodic",
@@ -29,10 +30,13 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 
 const PX_PER_DAY = 3;
 
-export function MainScheduleGantt() {
+export function Gantt({ scenarioId, editable = false }: { scenarioId: string | null; editable?: boolean }) {
   const [showCompleted, setShowCompleted] = useState(false);
-  const jobsQuery = trpc.schedule.mainScheduleJobs.useQuery({ scenarioId: null });
-  const warningsQuery = trpc.schedule.warnings.useQuery({ scenarioId: null });
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+
+  const utils = trpc.useUtils();
+  const jobsQuery = trpc.schedule.mainScheduleJobs.useQuery({ scenarioId });
+  const warningsQuery = trpc.schedule.warnings.useQuery({ scenarioId });
 
   const overdueJobIds = useMemo(
     () => new Set((warningsQuery.data ?? []).filter((w) => w.code === "compliance_overdue").map((w) => w.jobId)),
@@ -59,7 +63,12 @@ export function MainScheduleGantt() {
   const buildings = useMemo(() => {
     const byBin = new Map<
       string,
-      { bin: string; borough: string | null; address: string | null; assets: Map<string, { id: string; name: string; jobs: typeof visibleJobs }> }
+      {
+        bin: string;
+        borough: string | null;
+        address: string | null;
+        assets: Map<string, { id: string; name: string; jobs: typeof visibleJobs }>;
+      }
     >();
 
     for (const job of visibleJobs) {
@@ -80,6 +89,8 @@ export function MainScheduleGantt() {
     return Array.from(byBin.values()).sort((a, b) => (a.borough ?? "").localeCompare(b.borough ?? ""));
   }, [visibleJobs]);
 
+  const selectedJob = jobs.find((j) => j.id === selectedJobId) ?? null;
+
   if (jobsQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading schedule…</p>;
   if (jobsQuery.error) return <p className="text-sm text-red-600">Failed to load: {jobsQuery.error.message}</p>;
 
@@ -91,38 +102,26 @@ export function MainScheduleGantt() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <label className="flex items-center gap-1.5">
-          <input
-            type="checkbox"
-            checked={showCompleted}
-            onChange={(e) => setShowCompleted(e.target.checked)}
-          />
+          <input type="checkbox" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} />
           Show completed history
         </label>
-        <span className="text-muted-foreground">{jobs.length} jobs · {buildings.length} buildings</span>
-        {overdueCount > 0 && (
-          <span className="rounded bg-red-100 px-2 py-0.5 text-red-800">
-            {overdueCount} overdue
-          </span>
-        )}
+        <span className="text-muted-foreground">
+          {jobs.length} jobs · {buildings.length} buildings
+        </span>
+        {overdueCount > 0 && <span className="rounded bg-red-100 px-2 py-0.5 text-red-800">{overdueCount} overdue</span>}
         {deadlineCount > 0 && (
-          <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-800">
-            {deadlineCount} deadline(s) approaching
-          </span>
+          <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-800">{deadlineCount} deadline(s) approaching</span>
         )}
         {unscheduledJobs.length > 0 && (
-          <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">
-            {unscheduledJobs.length} needs manual date
-          </span>
+          <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">{unscheduledJobs.length} needs manual date</span>
         )}
+        {editable && <span className="text-muted-foreground">Click a bar to reschedule / reassign</span>}
       </div>
 
       <div className="flex flex-wrap gap-3 text-xs">
         {Object.entries(JOB_TYPE_LABELS).map(([type, label]) => (
           <span key={type} className="flex items-center gap-1">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{ background: JOB_TYPE_COLORS[type] }}
-            />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: JOB_TYPE_COLORS[type] }} />
             {label}
           </span>
         ))}
@@ -134,11 +133,7 @@ export function MainScheduleGantt() {
             <div className="w-60 shrink-0 border-r px-2 py-1 font-medium">Device</div>
             <div className="relative" style={{ width: timelineWidth }}>
               <TimelineHeader start={timelineStart} end={timelineEnd} />
-              <div
-                className="absolute top-0 h-full border-l border-red-400"
-                style={{ left: todayLeft }}
-                title="Today"
-              />
+              <div className="absolute top-0 h-full border-l border-red-400" style={{ left: todayLeft }} title="Today" />
             </div>
           </div>
 
@@ -163,27 +158,26 @@ export function MainScheduleGantt() {
                         differenceInCalendarDays(new Date(job.scheduledStart), timelineStart) * PX_PER_DAY
                       );
                       const rawWidth =
-                        differenceInCalendarDays(new Date(job.scheduledEnd), new Date(job.scheduledStart)) *
-                        PX_PER_DAY;
+                        differenceInCalendarDays(new Date(job.scheduledEnd), new Date(job.scheduledStart)) * PX_PER_DAY;
                       const width = Math.max(6, rawWidth);
                       const isOverdue = overdueJobIds.has(job.id);
                       const isDeadline = deadlineJobIds.has(job.id);
                       return (
                         <div
                           key={job.id}
+                          role={editable ? "button" : undefined}
+                          tabIndex={editable ? 0 : undefined}
                           className="absolute top-1 h-5 rounded-sm"
                           style={{
                             left,
                             width,
                             background: JOB_TYPE_COLORS[job.jobType] ?? "#6b7280",
-                            outline: isOverdue
-                              ? "2px solid #dc2626"
-                              : isDeadline
-                                ? "2px solid #d97706"
-                                : undefined,
+                            outline: isOverdue ? "2px solid #dc2626" : isDeadline ? "2px solid #d97706" : undefined,
                             opacity: job.status === "COMPLETED" ? 0.5 : 1,
+                            cursor: editable ? "pointer" : "default",
                           }}
                           title={`${job.title} — ${job.status} — ${format(new Date(job.scheduledStart), "MMM d, yyyy")}`}
+                          onClick={editable ? () => setSelectedJobId(job.id) : undefined}
                         />
                       );
                     })}
@@ -210,6 +204,19 @@ export function MainScheduleGantt() {
           </ul>
         </details>
       )}
+
+      {editable && selectedJob && scenarioId && (
+        <JobEditPopover
+          job={selectedJob}
+          scenarioId={scenarioId}
+          onClose={() => setSelectedJobId(null)}
+          onSaved={() => {
+            setSelectedJobId(null);
+            utils.schedule.mainScheduleJobs.invalidate({ scenarioId });
+            utils.schedule.warnings.invalidate({ scenarioId });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -218,20 +225,13 @@ function TimelineHeader({ start, end }: { start: Date; end: Date }) {
   const months: { label: string; left: number }[] = [];
   const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
   while (cursor <= end) {
-    months.push({
-      label: format(cursor, "MMM yyyy"),
-      left: Math.max(0, differenceInCalendarDays(cursor, start) * PX_PER_DAY),
-    });
+    months.push({ label: format(cursor, "MMM yyyy"), left: Math.max(0, differenceInCalendarDays(cursor, start) * PX_PER_DAY) });
     cursor.setMonth(cursor.getMonth() + 1);
   }
   return (
     <>
       {months.map((m) => (
-        <div
-          key={m.label}
-          className="absolute top-0 border-l px-1 py-1 text-[10px] text-muted-foreground"
-          style={{ left: m.left }}
-        >
+        <div key={m.label} className="absolute top-0 border-l px-1 py-1 text-[10px] text-muted-foreground" style={{ left: m.left }}>
           {m.label}
         </div>
       ))}

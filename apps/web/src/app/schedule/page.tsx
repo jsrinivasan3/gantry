@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { appConfig } from "@/config/app";
-import { MainScheduleGantt } from "@/app/schedule/gantt";
+import { Gantt } from "@/components/gantt/Gantt";
 
 export default async function SchedulePage() {
   const session = await auth();
@@ -17,7 +17,7 @@ export default async function SchedulePage() {
           due dates rule-derived — never fabricated. Copy into a scenario to plan changes.
         </p>
       </header>
-      <MainScheduleGantt />
+      <Gantt scenarioId={null} />
     </main>
   );
 }

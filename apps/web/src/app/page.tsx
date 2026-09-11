@@ -23,6 +23,9 @@ export default async function HomePage() {
         <Link className="underline" href="/schedule">
           Main Schedule
         </Link>
+        <Link className="underline" href="/scenarios">
+          Scenarios
+        </Link>
       </nav>
 
       <section className="rounded-lg border p-4">

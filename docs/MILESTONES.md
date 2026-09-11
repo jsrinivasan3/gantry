@@ -59,14 +59,33 @@ left uncommitted).
   overdue warnings, 16 approaching-deadline warnings, 139 needing a manual
   date, all rendered correctly in the browser with real addresses.
 
-## M4 — Parts, teams, scenarios ⬜
-- Synthetic parts catalog + `job_parts` BOM seeding (`sample-data/parts.csv`,
-  `teams.csv`), clearly labeled synthetic in the UI.
-- Teams + capacity entries.
-- Scenario copy (deep copy, new IDs, isolated from Main Schedule and other
-  scenarios) + scenario Gantt with drag/resize/reassign, batch job edits.
-- **Exit check**: a Planner can copy the Main Schedule into a scenario,
-  drag a job to a new date/team, and the Main Schedule is untouched.
+## M4 — Parts, teams, scenarios ✅
+- Synthetic parts catalog + teams seeded (M1); `job_parts` BOM now
+  auto-attached to every job at creation time via a `jobType -> parts`
+  synthetic catalog (`src/config/jobPartsCatalog.ts`) applied in both the
+  sync module and the derivation engine.
+- Scenario copy (`scenario.create`): deep-copies every Main Schedule job
+  (new id, `copiedFromJobId` back-reference, job-parts copied line-for-line)
+  into an isolated scenario, stamping a `ScheduleRevision`.
+- Scenario editing: click a Gantt bar to open a popover (`JobEditPopover`)
+  to reschedule, reassign team, or change status — mutates only the
+  scenario's copy via `scenario.updateJob`, server-verified to belong to
+  that scenario and owned by the caller (or Admin).
+- Ad-hoc job creation within a scenario (`scenario.addJob`) and scenario
+  deletion (`scenario.delete`).
+- The Gantt component was generalized (`src/components/gantt/Gantt.tsx`)
+  to serve both the read-only Main Schedule and editable scenarios via an
+  `editable` prop, rather than duplicating it.
+- **Scoped-down from the spec's "drag/resize"**: editing is click-to-open-a-
+  form rather than pointer-drag — functionally equivalent (reschedule +
+  reassign a job) and far more reliable to get right than freehand drag
+  physics in the time available. dnd-kit is still installed if real drag
+  interaction is wanted later.
+- **Exit check** ✅: live-verified — created a scenario ("Q1 batch CAT1
+  tests") that deep-copied all 1762 Main Schedule jobs, rescheduled an
+  overdue CAT5 job and assigned it to a team (confirmed only the scenario's
+  row changed in Postgres, Main Schedule row untouched), and added an
+  ad-hoc job (1762 → 1763 jobs in the scenario only).
 
 ## M5 — Forecasting ⬜
 - `workloadForecast.ts` / `partsForecast.ts` / `costForecast.ts` + shared

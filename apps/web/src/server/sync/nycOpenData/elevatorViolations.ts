@@ -2,6 +2,7 @@ import { prisma } from "@/server/db/client";
 import { fetchAllSocrataRows, soqlInList } from "@/server/sync/nycOpenData/socrata";
 import type { ElevatorViolationRow } from "@/server/sync/nycOpenData/types";
 import { withSyncRun, type SyncResult } from "@/server/sync/nycOpenData/upsert";
+import { attachJobParts } from "@/server/scheduling/attachJobParts";
 
 const DATASET_ID = "dedp-nh8d";
 
@@ -61,7 +62,7 @@ export async function syncElevatorViolations(bins: readonly string[]): Promise<S
 
       const violationLabel = (row.violation_type ?? row.violation_number).replace(/\s+/g, " ").trim();
 
-      await prisma.job.upsert({
+      const job = await prisma.job.upsert({
         where: {
           source_externalId: {
             source: "NYC_OPEN_DATA",
@@ -86,6 +87,7 @@ export async function syncElevatorViolations(bins: readonly string[]): Promise<S
           title: `Violation repair: ${violationLabel}`,
         },
       });
+      await attachJobParts(job.id, "VIOLATION_REPAIR");
       upserted += 1;
     }
 
