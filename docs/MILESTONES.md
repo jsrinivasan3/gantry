@@ -35,16 +35,29 @@ left uncommitted).
   Confirmed real overdue CAT1 compliance data exists in scope for M3's
   warning to surface (e.g. device `1E20876`, last CAT1 filed 2023-12-14).
 
-## M3 — Schedule derivation ⬜
-- `job_type_rules` table + engine implementing §10.1 (CAT1/CAT5/periodic
-  elevator cadences, low/high-pressure boiler cadences) — never fabricates a
-  date when the source field is null.
-- Violation → `violation_repair` job auto-creation (§10.2).
-- Boiler defect → follow-up job + 90/104-day deadline warnings (§10.3).
-- Read-only Main Schedule Gantt (rows = devices grouped by building/borough,
-  bars = jobs, color-coded by job_type/status).
-- **Exit check**: Main Schedule Gantt shows real + derived jobs; at least one
-  overdue compliance warning and one boiler defect job are visible.
+## M3 — Schedule derivation ✅
+- `job_type_rules`-driven engine (`server/scheduling/`) implementing §10.1:
+  elevator CAT1/CAT5/periodic and low/high-pressure boiler cadences, one
+  forward job per (asset, job_type), re-derived idempotently after every
+  sync. Never fabricates a date when the source field is null — creates an
+  `UNSCHEDULED` job instead (§4).
+- Violation → `violation_repair` auto-creation was folded into the M2 sync
+  module itself (one violation row maps directly to one job — no
+  intermediate derivation needed), not duplicated here.
+- Boiler defect → follow-up job (§10.3), linked via `linkedJobId`, due at
+  +90 days with a +104-day affirmation deadline computed at read time.
+- `computeWarnings()` — `compliance_overdue` and
+  `defect_correction_deadline_approaching`, computed live rather than
+  stored (pure function of the current schedule). The other three §11
+  warnings need teams/parts and are deferred to M4/M6.
+- Read-only Main Schedule Gantt at `/schedule` — rows = devices grouped by
+  building (BIN/address, borrowed onto boiler assets from a sibling
+  elevator at sync time), bars = jobs color-coded by job_type, red/amber
+  outline for overdue/deadline-approaching, "needs manual date" jobs listed
+  separately rather than plotted.
+- **Exit check** ✅: live-verified — 1762 jobs across 41 buildings, 259
+  overdue warnings, 16 approaching-deadline warnings, 139 needing a manual
+  date, all rendered correctly in the browser with real addresses.
 
 ## M4 — Parts, teams, scenarios ⬜
 - Synthetic parts catalog + `job_parts` BOM seeding (`sample-data/parts.csv`,

@@ -1,8 +1,10 @@
 import { createTRPCRouter, publicProcedure } from "@/server/trpc/trpc";
 import { syncRouter } from "@/server/trpc/routers/sync";
+import { scheduleRouter } from "@/server/trpc/routers/schedule";
 
 export const appRouter = createTRPCRouter({
   sync: syncRouter,
+  schedule: scheduleRouter,
 
   health: publicProcedure.query(async ({ ctx }) => {
     const [userCount, assetCount] = await Promise.all([

@@ -34,6 +34,16 @@ export async function syncBoilerSafety(bins: readonly string[]): Promise<SyncRes
 
       const inspectionDate = parseSocrataDate(row.inspection_date) ?? new Date();
 
+      // Boiler reports don't carry borough/address — borrow it from a
+      // sibling elevator asset at the same BIN so buildings with both
+      // group together sensibly in the Gantt.
+      const sibling = row.bin_number
+        ? await prisma.asset.findFirst({
+            where: { bin: row.bin_number, assetType: "ELEVATOR" },
+            select: { borough: true, address: true },
+          })
+        : null;
+
       const asset = await prisma.asset.upsert({
         where: {
           externalSource_externalId: {
@@ -47,10 +57,14 @@ export async function syncBoilerSafety(bins: readonly string[]): Promise<SyncRes
           assetType: "BOILER",
           displayName: `Boiler ${row.boiler_id} (${row.boiler_make ?? "unknown make"})`,
           bin: row.bin_number ?? null,
+          borough: sibling?.borough ?? null,
+          address: sibling?.address ?? null,
           status: row.report_status ?? "Unknown",
           metadata: row as object,
         },
         update: {
+          borough: sibling?.borough ?? undefined,
+          address: sibling?.address ?? undefined,
           status: row.report_status ?? "Unknown",
           metadata: row as object,
         },

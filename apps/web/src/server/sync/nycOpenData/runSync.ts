@@ -3,6 +3,7 @@ import { defaultSyncScope } from "@/config/syncScope";
 import { syncElevatorCompliance } from "@/server/sync/nycOpenData/elevatorCompliance";
 import { syncElevatorViolations } from "@/server/sync/nycOpenData/elevatorViolations";
 import { syncBoilerSafety } from "@/server/sync/nycOpenData/boilerSafety";
+import { deriveMainSchedule } from "@/server/scheduling/deriveAll";
 
 export async function getSyncScope() {
   const config = await prisma.syncConfig.upsert({
@@ -27,8 +28,9 @@ export async function runFullSync() {
   const elevatorCompliance = await syncElevatorCompliance(bins);
   const elevatorViolations = await syncElevatorViolations(bins);
   const boilerSafety = await syncBoilerSafety(bins);
+  const derivation = await deriveMainSchedule();
 
-  return { elevatorCompliance, elevatorViolations, boilerSafety };
+  return { elevatorCompliance, elevatorViolations, boilerSafety, derivation };
 }
 
 export type SyncSourceKey = "elevatorCompliance" | "elevatorViolations" | "boilerSafety";

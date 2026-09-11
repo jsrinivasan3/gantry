@@ -19,6 +19,12 @@ export default async function HomePage() {
         <p className="text-muted-foreground text-sm">{appConfig.tagline}</p>
       </header>
 
+      <nav className="flex gap-4 text-sm">
+        <Link className="underline" href="/schedule">
+          Main Schedule
+        </Link>
+      </nav>
+
       <section className="rounded-lg border p-4">
         <h2 className="mb-2 font-medium">Foundation status (M1)</h2>
         <ul className="text-sm text-muted-foreground space-y-1">
