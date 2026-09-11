@@ -6,12 +6,21 @@ import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Gantt } from "@/components/gantt/Gantt";
 import { ForecastPanel } from "@/app/scenarios/[id]/forecast-panel";
+import { DiffPanel } from "@/app/scenarios/[id]/diff-panel";
 
-export function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
+export function ScenarioDetail({
+  scenarioId,
+  currentUserId,
+  isAdmin,
+}: {
+  scenarioId: string;
+  currentUserId: string;
+  isAdmin: boolean;
+}) {
   const router = useRouter();
   const scenarioQuery = trpc.scenario.get.useQuery({ id: scenarioId });
   const [showAddJob, setShowAddJob] = useState(false);
-  const [tab, setTab] = useState<"gantt" | "forecast">("gantt");
+  const [tab, setTab] = useState<"gantt" | "forecast" | "promote">("gantt");
 
   if (scenarioQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading scenario…</p>;
   if (scenarioQuery.error) return <p className="text-sm text-red-600">{scenarioQuery.error.message}</p>;
@@ -49,9 +58,24 @@ export function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
         >
           Forecast
         </button>
+        <button
+          className={`px-3 py-1.5 ${tab === "promote" ? "border-b-2 border-black font-medium" : "text-muted-foreground"}`}
+          onClick={() => setTab("promote")}
+        >
+          Diff &amp; Promote
+        </button>
       </div>
 
-      {tab === "gantt" ? <Gantt scenarioId={scenarioId} editable /> : <ForecastPanel scenarioId={scenarioId} />}
+      {tab === "gantt" && <Gantt scenarioId={scenarioId} editable />}
+      {tab === "forecast" && <ForecastPanel scenarioId={scenarioId} />}
+      {tab === "promote" && (
+        <DiffPanel
+          scenarioId={scenarioId}
+          status={scenario.status}
+          isOwner={scenario.ownerUserId === currentUserId}
+          isAdmin={isAdmin}
+        />
+      )}
     </div>
   );
 }

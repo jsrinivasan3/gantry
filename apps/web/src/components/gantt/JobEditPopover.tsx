@@ -24,7 +24,8 @@ export function JobEditPopover({
   onSaved,
 }: {
   job: JobLike;
-  scenarioId: string;
+  /** null = editing the Main Schedule directly (Admin-only server-side). */
+  scenarioId: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -35,15 +36,32 @@ export function JobEditPopover({
   const [error, setError] = useState<string | null>(null);
 
   const teamsQuery = trpc.catalog.teams.useQuery();
-  const updateJob = trpc.scenario.updateJob.useMutation({
+  const updateScenarioJob = trpc.scenario.updateJob.useMutation({
     onSuccess: onSaved,
     onError: (e) => setError(e.message),
   });
+  const updateMainJob = trpc.schedule.updateMainJob.useMutation({
+    onSuccess: onSaved,
+    onError: (e) => setError(e.message),
+  });
+  const isPending = updateScenarioJob.isPending || updateMainJob.isPending;
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="w-80 rounded-lg border bg-background p-4 shadow-lg" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-1 text-sm font-semibold">{job.title}</h3>
+    <div
+      className="fixed inset-0 z-20 flex items-center justify-center bg-black/30"
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="job-edit-title"
+        className="w-80 rounded-lg border bg-background p-4 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 id="job-edit-title" className="mb-1 text-sm font-semibold">
+          {job.title}
+        </h3>
         <p className="mb-3 text-xs text-muted-foreground">{job.asset.displayName}</p>
 
         <div className="flex flex-col gap-2 text-sm">
@@ -100,20 +118,24 @@ export function JobEditPopover({
           </button>
           <button
             className="rounded bg-black px-3 py-1.5 text-white disabled:opacity-50"
-            disabled={updateJob.isPending}
+            disabled={isPending}
             onClick={() => {
               setError(null);
-              updateJob.mutate({
-                scenarioId,
+              const payload = {
                 jobId: job.id,
                 scheduledStart: new Date(start),
                 scheduledEnd: new Date(end),
                 teamId: teamId || null,
                 status: status as (typeof STATUSES)[number],
-              });
+              };
+              if (scenarioId) {
+                updateScenarioJob.mutate({ scenarioId, ...payload });
+              } else {
+                updateMainJob.mutate(payload);
+              }
             }}
           >
-            {updateJob.isPending ? "Saving…" : "Save"}
+            {isPending ? "Saving…" : "Save"}
           </button>
         </div>
       </div>

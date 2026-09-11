@@ -11,8 +11,10 @@ and lets a facilities team plan changes in isolated **scenarios**, track a
 synthetic parts catalog, and forecast workload/parts/cost — all rendered as
 an interactive Gantt chart.
 
-Build plan and current status: [docs/MILESTONES.md](docs/MILESTONES.md).
-Full product spec: [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md).
+**Status: feature-complete** — all 6 build milestones done; see
+[docs/MILESTONES.md](docs/MILESTONES.md) for what was built and the
+decisions made along the way. Full product spec:
+[docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md).
 
 ## What's real vs. synthetic
 
@@ -113,6 +115,28 @@ the Gantt populated with real assets and rule-derived due dates.
 If the live API is unreachable, a one-time snapshot pull is committed at
 `sample-data/nyc-open-data-snapshot/*.csv` as an offline fallback — see
 [docs/NYC_DATA_INGESTION.md](docs/NYC_DATA_INGESTION.md).
+
+## A walkthrough of what to try
+
+1. **`/schedule`** — the Main Schedule Gantt. Real elevator/boiler data,
+   rows grouped by building, jobs color-coded by type. Warning badges at
+   the top are real: overdue compliance, approaching defect-correction
+   deadlines, jobs needing a manual date, and others (stockouts, overlaps,
+   unassigned/over-capacity teams). As Admin, click any bar to edit it
+   directly — this is how you'd fill in a real date for a "needs manual
+   date" job once one becomes known.
+2. **`/scenarios`** — create a scenario (as Planner or Admin) to get an
+   isolated deep copy of the whole Main Schedule. Click into it, then click
+   a Gantt bar to reschedule it or assign a team — the Main Schedule is
+   untouched until you promote.
+3. Inside a scenario, the **Forecast** tab runs the workload/parts/cost
+   engine and charts the results — watch the cost chart's real filing-fee
+   dollars stay visually separate from the synthetic labor/parts cost bars.
+4. The **Diff & Promote** tab shows exactly what changed vs. the Main
+   Schedule. Submit it (Planner), then approve & promote it (Admin) to
+   apply those changes back to the real schedule.
+5. **`/admin`** (Admin only) — the Data Sync panel: re-run the live sync,
+   see sync history, and see the current scope.
 
 ## Dev login credentials (seeded, local only — not for production)
 

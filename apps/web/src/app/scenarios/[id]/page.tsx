@@ -10,7 +10,7 @@ export default async function ScenarioDetailPage({ params }: PageProps<"/scenari
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 px-6 py-10">
-      <ScenarioDetail scenarioId={id} />
+      <ScenarioDetail scenarioId={id} currentUserId={session.user.id} isAdmin={session.user.role === "ADMIN"} />
     </main>
   );
 }

@@ -97,6 +97,9 @@ export function Gantt({ scenarioId, editable = false }: { scenarioId: string | n
   const unscheduledJobs = jobs.filter((j) => j.status === "UNSCHEDULED");
   const overdueCount = overdueJobIds.size;
   const deadlineCount = deadlineJobIds.size;
+  const otherWarnings = (warningsQuery.data ?? []).filter(
+    (w) => w.code !== "compliance_overdue" && w.code !== "defect_correction_deadline_approaching"
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,6 +117,9 @@ export function Gantt({ scenarioId, editable = false }: { scenarioId: string | n
         )}
         {unscheduledJobs.length > 0 && (
           <span className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">{unscheduledJobs.length} needs manual date</span>
+        )}
+        {otherWarnings.length > 0 && (
+          <span className="rounded bg-purple-100 px-2 py-0.5 text-purple-800">{otherWarnings.length} other warning(s)</span>
         )}
         {editable && <span className="text-muted-foreground">Click a bar to reschedule / reassign</span>}
       </div>
@@ -176,8 +182,19 @@ export function Gantt({ scenarioId, editable = false }: { scenarioId: string | n
                             opacity: job.status === "COMPLETED" ? 0.5 : 1,
                             cursor: editable ? "pointer" : "default",
                           }}
+                          aria-label={editable ? `Edit ${job.title} for ${asset.name}` : undefined}
                           title={`${job.title} — ${job.status} — ${format(new Date(job.scheduledStart), "MMM d, yyyy")}`}
                           onClick={editable ? () => setSelectedJobId(job.id) : undefined}
+                          onKeyDown={
+                            editable
+                              ? (e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setSelectedJobId(job.id);
+                                  }
+                                }
+                              : undefined
+                          }
                         />
                       );
                     })}
@@ -205,7 +222,21 @@ export function Gantt({ scenarioId, editable = false }: { scenarioId: string | n
         </details>
       )}
 
-      {editable && selectedJob && scenarioId && (
+      {otherWarnings.length > 0 && (
+        <details className="rounded-lg border p-3 text-sm">
+          <summary className="cursor-pointer font-medium">{otherWarnings.length} other warning(s)</summary>
+          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {otherWarnings.slice(0, 50).map((w, i) => (
+              <li key={`${w.jobId}-${w.code}-${i}`}>
+                <span className="font-medium">{w.code}</span>: {w.message}
+              </li>
+            ))}
+            {otherWarnings.length > 50 && <li>…and {otherWarnings.length - 50} more</li>}
+          </ul>
+        </details>
+      )}
+
+      {editable && selectedJob && (
         <JobEditPopover
           job={selectedJob}
           scenarioId={scenarioId}

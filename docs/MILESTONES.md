@@ -1,5 +1,8 @@
 # Gantry — Build Plan & Milestones
 
+**Status: all 6 milestones complete** — spec §16's full definition of done
+has been live-verified end to end (see M6's exit check below).
+
 Status legend: ⬜ not started · 🔶 in progress · ✅ done
 
 This mirrors the implementation sequence in `docs/PRODUCT_SPEC.md` §15, broken
@@ -122,13 +125,44 @@ left uncommitted).
   Set" correctly stepping down from 18 to below its reorder point of 6
   by ~April 2026 given its consumption by every CAT1 test.
 
-## M6 — Comparison, promotion, polish ⬜
-- Scenario-vs-Main diff view + promotion (reviewed diff required).
-- Remaining warnings (`same_asset_overlap`, `team_over_capacity`,
-  `unassigned_team`, `part_stockout_before_job`, `missing_part_cost`).
-- CSV/manual-entry fallback for assets with incomplete compliance history.
-- Accessibility + performance pass (large Gantt virtualization, keyboard nav).
-- **Exit check**: full definition-of-done in spec §16 is satisfied.
+## M6 — Comparison, promotion, polish ✅
+- Scenario diff + promotion (spec §4's "explicit reviewed diff" requirement):
+  `scenario.diff` compares every scenario job against the Main Schedule job
+  it was copied from field-by-field; `scenario.submitForPromotion`
+  (Planner/owner, DRAFT → SUBMITTED) and `scenario.promote` (Admin-only,
+  SUBMITTED → PROMOTED) apply only the changed jobs onto the real Main
+  Schedule and create the scenario's ad-hoc jobs there, logging an
+  `AuditEvent` per change.
+- All five remaining §11 warnings implemented in `computeWarnings()`:
+  `same_asset_overlap` (two open jobs on one device with overlapping
+  dates), `team_over_capacity` (a team's daily demand vs. resolved
+  capacity), `unassigned_team` (bounded to jobs due within 30 days — see
+  bug note below), `part_stockout_before_job` and `missing_part_cost`
+  (bounded to a 90-day horizon).
+- CSV/manual-entry fallback: Admins can now click any Main Schedule job
+  directly (`schedule.updateMainJob`) — including an `UNSCHEDULED` one — to
+  fill in a real date once it's known, rather than Gantry ever guessing one.
+  The Gantt component is shared between this and scenario editing.
+- Accessibility: Gantt bars are keyboard-operable (`Enter`/`Space`
+  activates, matching their `role="button"`/`tabIndex`), the edit popover
+  is a labeled `role="dialog"` closable with `Escape`.
+- **Bug found and fixed while testing**: the first version of
+  `part_stockout_before_job` had no time horizon, so once a part's stock
+  legitimately depleted (correctly, per the M5 parts *forecast*), every
+  later job needing it for the rest of the year got flagged — 1153
+  warnings on one scenario. A warning should mean "act now," so it's now
+  bounded to a 90-day horizon (matching the `unassigned_team` pattern);
+  verified down to 72 on the same data.
+- **Not done** (explicitly cut for time, not silently dropped): Gantt row
+  virtualization for very large portfolios — at the current ~1700
+  jobs/535 assets it renders and interacts smoothly, so this wasn't yet a
+  real problem to solve.
+- **Exit check** ✅: live end-to-end walkthrough of the full spec §16
+  definition of done — synced real data, viewed the Main Schedule Gantt
+  with a real overdue warning and a real defect job, created a scenario,
+  rescheduled a job in it, confirmed the diff showed exactly that change,
+  submitted it, and promoted it as Admin — confirmed via Postgres that the
+  Main Schedule job's date changed and an audit event was recorded.
 
 ## Assumptions / decisions log
 
