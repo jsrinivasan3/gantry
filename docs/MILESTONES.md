@@ -18,18 +18,22 @@ left uncommitted).
 - Next.js App Router shell, Tailwind + shadcn/ui, NextAuth (email/password),
   tRPC wired end-to-end with a health-check procedure.
 
-## M2 — Live NYC Open Data ingestion ⬜
+## M2 — Live NYC Open Data ingestion ✅
 - `server/sync/nycOpenData/`: fetchers for elevator compliance (`e5aq-a4j2`),
   elevator violations (`dedp-nh8d`), boiler safety (`52dp-yji6`), scoped to a
-  configurable borough/BIN list (default: Manhattan, capped to keep the demo
-  in the hundreds of devices).
-- Upsert logic keyed by external ID, idempotent re-sync.
-- `sync_runs` log + Admin "Data Sync" panel (last synced, record counts,
-  manual "Sync now", scope config).
-- One-time committed snapshot CSV fallback under `sample-data/`.
-- Scheduled sync route (cron-triggerable) for incremental syncs.
-- **Exit check**: real elevator + boiler assets sitting in Postgres, sourced
-  from the live API, re-syncable without duplication.
+  configurable borough/BIN list (default: 41 curated Manhattan BINs — see
+  `docs/NYC_DATA_INGESTION.md`).
+- Upsert logic keyed by external ID (`sync_config`-driven scope, admin
+  editable via `sync.configUpdate`), idempotent re-sync verified live.
+- `sync_runs` log + Admin "Data Sync" panel (`/admin`) — last synced, record
+  counts, manual "Sync now" button.
+- One-time committed snapshot CSV fallback under `sample-data/nyc-open-data-snapshot/`.
+- `/api/cron/sync` route for a scheduled trigger (Vercel Cron + `CRON_SECRET`).
+- **Exit check** ✅: live-verified in the browser — 463 elevator assets, 72
+  boiler assets, 640 completed boiler-inspection jobs (16 with real
+  `defectsFound`), 1 real `violation_repair` job, all idempotent on re-sync.
+  Confirmed real overdue CAT1 compliance data exists in scope for M3's
+  warning to surface (e.g. device `1E20876`, last CAT1 filed 2023-12-14).
 
 ## M3 — Schedule derivation ⬜
 - `job_type_rules` table + engine implementing §10.1 (CAT1/CAT5/periodic

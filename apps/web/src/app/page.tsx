@@ -35,16 +35,23 @@ export default async function HomePage() {
             <span>
               Signed in as <strong>{session.user.email}</strong> ({session.user.role})
             </span>
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/" });
-              }}
-            >
-              <button className="underline" type="submit">
-                Sign out
-              </button>
-            </form>
+            <div className="flex gap-4">
+              {session.user.role === "ADMIN" && (
+                <Link className="underline" href="/admin">
+                  Admin
+                </Link>
+              )}
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/" });
+                }}
+              >
+                <button className="underline" type="submit">
+                  Sign out
+                </button>
+              </form>
+            </div>
           </div>
         ) : (
           <Link className="text-sm underline" href="/sign-in">

@@ -375,6 +375,17 @@ enum SyncStatus {
   FAILED
 }
 
+// Admin-editable scope for which BINs/borough the sync fetchers pull (spec §13
+// sync.config.update). Singleton row, seeded from src/config/syncScope.ts.
+model SyncConfig {
+  id        String   @id @default("singleton")
+  borough   String
+  bins      String[]
+  updatedAt DateTime @updatedAt
+
+  @@map("sync_config")
+}
+
 model SyncRun {
   id               String     @id @default(uuid())
   source           SyncSource
