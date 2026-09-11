@@ -1,0 +1,17 @@
+sku,name,unit_cost,on_hand_count,reorder_point,reorder_quantity,lead_time_days,supplier
+EL-DOR-001,Elevator Door Operator Assembly,1850.00,6,2,4,21,Otis Parts Direct
+EL-CAB-002,Cab Interior Panel Set,620.00,10,3,6,14,ThyssenKrupp Supply
+EL-ROP-003,Traction Hoist Rope (per drum),340.00,12,4,8,10,Draka Elevator Products
+EL-HYD-004,Hydraulic Pump Seal Kit,95.00,25,8,20,7,Maxton Manufacturing
+EL-CTL-005,Controller Logic Board,2400.00,3,1,2,30,KONE Genuine Parts
+EL-BRK-006,Brake Shoe Set,180.00,18,6,12,10,Otis Parts Direct
+EL-BTN-007,Hall Call Button Station,140.00,20,5,10,7,Schindler Components
+EL-SAF-008,Governor Rope Safety Switch,410.00,9,3,6,14,Draka Elevator Products
+BL-VLV-101,Pressure Relief Valve,275.00,14,4,8,10,Cleaver-Brooks Parts
+BL-GAU-102,Water Column Gauge Glass Set,60.00,30,10,20,5,McMaster Boiler Supply
+BL-BRN-103,Burner Nozzle Assembly,510.00,8,3,6,14,Weil-McLain Parts
+BL-CTL-104,Low-Water Cutoff Control,690.00,7,2,4,21,Cleaver-Brooks Parts
+BL-GSK-105,Manhole Gasket Set,45.00,40,12,24,5,McMaster Boiler Supply
+BL-REF-106,Refractory Repair Cement (per bag),35.00,50,15,30,5,Weil-McLain Parts
+BL-TUB-107,Fire Tube Bundle,3200.00,2,1,2,45,Cleaver-Brooks Parts
+BL-STK-108,Stack Damper Actuator,320.00,10,3,6,14,McMaster Boiler Supply

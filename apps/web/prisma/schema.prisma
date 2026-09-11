@@ -1,0 +1,408 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Users, teams, capacity
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  VIEWER
+  PLANNER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  displayName  String
+  passwordHash String?
+  role         UserRole  @default(VIEWER)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  disabledAt   DateTime?
+
+  scenarios      Scenario[]
+  forecastRuns   ForecastRun[]
+  auditEvents    AuditEvent[]
+  scheduleRevisions ScheduleRevision[]
+
+  @@map("users")
+}
+
+model Team {
+  id         String   @id @default(uuid())
+  name       String
+  hourlyRate Decimal  @db.Decimal(10, 2)
+  active     Boolean  @default(true)
+
+  capacityEntries CapacityEntry[]
+  jobs            Job[]
+  workloadDaily   WorkloadForecastDaily[]
+
+  @@map("teams")
+}
+
+model CapacityEntry {
+  id             String    @id @default(uuid())
+  teamId         String
+  team           Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  scenarioId     String?
+  scenario       Scenario? @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  effectiveDate  DateTime  @db.Date
+  headcount      Int
+  hoursPerPerson Decimal   @db.Decimal(5, 2)
+
+  @@index([teamId, scenarioId, effectiveDate])
+  @@map("capacity_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Assets (elevators / boilers) — real external references
+// ---------------------------------------------------------------------------
+
+enum AssetType {
+  ELEVATOR
+  BOILER
+}
+
+enum ExternalSource {
+  NYC_DOB_ELEVATOR
+  NYC_DOB_BOILER
+  MANUAL
+}
+
+model Asset {
+  id              String         @id @default(uuid())
+  externalSource  ExternalSource
+  externalId      String
+  assetType       AssetType
+  displayName     String
+  bin             String?
+  borough         String?
+  address         String?
+  latitude        Decimal?       @db.Decimal(9, 6)
+  longitude       Decimal?       @db.Decimal(9, 6)
+  status          String
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  jobs Job[]
+
+  @@unique([externalSource, externalId])
+  @@index([assetType, borough])
+  @@map("assets")
+}
+
+// ---------------------------------------------------------------------------
+// Parts and inventory (synthetic)
+// ---------------------------------------------------------------------------
+
+model Part {
+  id              String   @id @default(uuid())
+  sku             String   @unique
+  name            String
+  unitCost        Decimal  @db.Decimal(10, 2)
+  onHandCount     Int      @default(0)
+  reorderPoint    Int      @default(0)
+  reorderQuantity Int      @default(0)
+  leadTimeDays    Int      @default(0)
+  supplier        String?
+  active          Boolean  @default(true)
+
+  jobParts             JobPart[]
+  stockMovements       PartStockMovement[]
+  partsForecastDaily   PartsForecastDaily[]
+
+  @@map("parts")
+}
+
+enum StockMovementType {
+  RECEIPT
+  CONSUMPTION
+  ADJUSTMENT
+}
+
+model PartStockMovement {
+  id             String            @id @default(uuid())
+  partId         String
+  part           Part              @relation(fields: [partId], references: [id], onDelete: Cascade)
+  jobId          String?
+  job            Job?              @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  movementType   StockMovementType
+  quantity       Int
+  unitCostAtTime Decimal           @db.Decimal(10, 2)
+  occurredAt     DateTime          @default(now())
+  note           String?
+
+  @@index([partId, occurredAt])
+  @@map("part_stock_movements")
+}
+
+// ---------------------------------------------------------------------------
+// Main Schedule and Scenarios
+// ---------------------------------------------------------------------------
+
+enum ScenarioStatus {
+  DRAFT
+  SUBMITTED
+  PROMOTED
+  ARCHIVED
+}
+
+model Scenario {
+  id                        String         @id @default(uuid())
+  ownerUserId               String
+  owner                     User           @relation(fields: [ownerUserId], references: [id])
+  name                      String
+  description               String?
+  copiedFromScheduleRevisionId String?
+  copiedFromScheduleRevision ScheduleRevision? @relation(fields: [copiedFromScheduleRevisionId], references: [id])
+  isShared                  Boolean        @default(false)
+  inputRevision             Int            @default(1)
+  status                    ScenarioStatus @default(DRAFT)
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+
+  jobs            Job[]
+  capacityEntries CapacityEntry[]
+  forecastRuns    ForecastRun[]
+
+  @@map("scenarios")
+}
+
+model ScheduleRevision {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  createdByUserId String
+  createdBy User     @relation(fields: [createdByUserId], references: [id])
+  note      String?
+
+  scenariosCopiedFrom Scenario[]
+
+  @@map("schedule_revisions")
+}
+
+// ---------------------------------------------------------------------------
+// Jobs
+// ---------------------------------------------------------------------------
+
+enum JobSource {
+  NYC_OPEN_DATA
+  DERIVED_RULE
+  MANUAL
+}
+
+enum JobType {
+  CAT1_TEST
+  CAT5_TEST
+  PERIODIC_INSPECTION
+  BOILER_EXTERNAL
+  BOILER_INTERNAL
+  BOILER_PERIODIC
+  VIOLATION_REPAIR
+  OTHER
+}
+
+enum JobStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  UNSCHEDULED
+}
+
+model Job {
+  id                   String     @id @default(uuid())
+  scenarioId           String?
+  scenario             Scenario?  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  copiedFromJobId       String?
+  assetId              String
+  asset                Asset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  teamId               String?
+  team                 Team?      @relation(fields: [teamId], references: [id])
+  source               JobSource
+  externalId           String?
+  jobType              JobType
+  title                String
+  status               JobStatus  @default(PLANNED)
+  scheduledStart       DateTime   @db.Date
+  scheduledEnd         DateTime   @db.Date
+  estimatedLaborHours  Decimal    @default(0) @db.Decimal(6, 2)
+  actualLaborHours     Decimal?   @db.Decimal(6, 2)
+  defectsFound         Boolean?
+  realFilingFee        Decimal?   @db.Decimal(10, 2)
+  priority             String     @default("normal")
+  linkedJobId          String?    // e.g. violation -> repair, defect -> follow-up
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  completedAt          DateTime?
+
+  jobParts       JobPart[]
+  stockMovements PartStockMovement[]
+
+  @@unique([source, externalId])
+  @@index([scenarioId, assetId])
+  @@index([scheduledStart, scheduledEnd])
+  @@map("jobs")
+}
+
+model JobPart {
+  id                String  @id @default(uuid())
+  jobId             String
+  job               Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  partId            String
+  part              Part    @relation(fields: [partId], references: [id])
+  quantityPlanned   Int
+  quantityConsumed  Int?
+
+  @@unique([jobId, partId])
+  @@map("job_parts")
+}
+
+// job_type_rules — configurable derivation cadences (§10.1)
+model JobTypeRule {
+  id            String  @id @default(uuid())
+  jobType       JobType @unique
+  intervalDays  Int
+  sourceField   String  // name of the real field this rule derives its due date from
+  description   String?
+  active        Boolean @default(true)
+
+  @@map("job_type_rules")
+}
+
+// ---------------------------------------------------------------------------
+// Forecast runs
+// ---------------------------------------------------------------------------
+
+enum ForecastRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model ForecastRun {
+  id                    String            @id @default(uuid())
+  scenarioId            String
+  scenario              Scenario          @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  createdByUserId       String
+  createdBy             User              @relation(fields: [createdByUserId], references: [id])
+  status                ForecastRunStatus @default(PENDING)
+  startDate             DateTime          @db.Date
+  endDate               DateTime          @db.Date
+  scenarioInputRevision Int
+  inputHash             String
+  engineVersion         String
+  createdAt             DateTime          @default(now())
+  startedAt             DateTime?
+  completedAt           DateTime?
+  failureMessage        String?
+
+  workloadDaily WorkloadForecastDaily[]
+  partsDaily    PartsForecastDaily[]
+  costDaily     CostForecastDaily[]
+
+  @@map("forecast_runs")
+}
+
+model WorkloadForecastDaily {
+  id            String      @id @default(uuid())
+  forecastRunId String
+  forecastRun   ForecastRun @relation(fields: [forecastRunId], references: [id], onDelete: Cascade)
+  date          DateTime    @db.Date
+  teamId        String?
+  team          Team?       @relation(fields: [teamId], references: [id])
+  demandHours   Decimal     @db.Decimal(8, 2)
+  capacityHours Decimal     @db.Decimal(8, 2)
+  demandKind    String      @default("scheduled") // 'scheduled' | 'reactive' — splits compliance vs violation-repair demand
+
+  @@index([forecastRunId, date])
+  @@map("workload_forecast_daily")
+}
+
+model PartsForecastDaily {
+  id                     String      @id @default(uuid())
+  forecastRunId          String
+  forecastRun            ForecastRun @relation(fields: [forecastRunId], references: [id], onDelete: Cascade)
+  date                   DateTime    @db.Date
+  partId                 String
+  part                   Part        @relation(fields: [partId], references: [id])
+  projectedOnHand        Int
+  projectedConsumption   Int
+  stockoutRisk           Boolean     @default(false)
+  suggestedReorderDate   DateTime?   @db.Date
+  suggestedReorderQuantity Int?
+
+  @@index([forecastRunId, date])
+  @@map("parts_forecast_daily")
+}
+
+model CostForecastDaily {
+  id                 String      @id @default(uuid())
+  forecastRunId      String
+  forecastRun        ForecastRun @relation(fields: [forecastRunId], references: [id], onDelete: Cascade)
+  date               DateTime    @db.Date
+  laborCost          Decimal     @db.Decimal(12, 2)
+  partsCost          Decimal     @db.Decimal(12, 2)
+  realFilingFeeCost  Decimal     @db.Decimal(12, 2)
+  cumulativeCost     Decimal     @db.Decimal(14, 2)
+
+  @@index([forecastRunId, date])
+  @@map("cost_forecast_daily")
+}
+
+// ---------------------------------------------------------------------------
+// Sync log
+// ---------------------------------------------------------------------------
+
+enum SyncSource {
+  NYC_DOB_ELEVATOR_COMPLIANCE
+  NYC_DOB_ELEVATOR_VIOLATIONS
+  NYC_DOB_BOILER_SAFETY
+}
+
+enum SyncStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model SyncRun {
+  id               String     @id @default(uuid())
+  source           SyncSource
+  startedAt        DateTime   @default(now())
+  completedAt      DateTime?
+  status           SyncStatus @default(RUNNING)
+  recordsFetched   Int        @default(0)
+  recordsUpserted  Int        @default(0)
+  errorMessage     String?
+
+  @@index([source, startedAt])
+  @@map("sync_runs")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+model AuditEvent {
+  id           String   @id @default(uuid())
+  entityType   String
+  entityId     String
+  operation    String
+  actorUserId  String?
+  actor        User?    @relation(fields: [actorUserId], references: [id])
+  occurredAt   DateTime @default(now())
+  changes      Json?
+
+  @@index([entityType, entityId])
+  @@map("audit_events")
+}

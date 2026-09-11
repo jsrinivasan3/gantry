@@ -1,0 +1,6 @@
+name,hourly_rate,headcount,hours_per_person,active
+Elevator Crew A (In-house),68.00,3,8,true
+Elevator Crew B (In-house),68.00,2,8,true
+Boiler Crew (In-house),72.00,2,8,true
+Contracted Elevator Techs (Otis),95.00,2,8,true
+Contracted Boiler Inspectors,110.00,1,6,true
