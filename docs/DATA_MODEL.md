@@ -85,20 +85,27 @@ regulatory change is a data edit, not a code change.
 
 ## Forecasting
 
-Not yet implemented (M5) — the tables exist so the schema is complete, but
-nothing writes to them yet:
+Implemented in M5 (`apps/web/src/server/forecasting/`):
 
 - **ForecastRun** — one computed snapshot from a scenario over a date range,
-  hashed (`inputHash`) so an identical re-run can be detected.
+  hashed (`inputHash`, a digest of every job's id+updatedAt) so an identical
+  re-run is identifiable. Default window is today−180 days to today+365
+  days — spans past and future so real historical filing-fee spend and
+  synthetic future cost projections sit on one connected timeline.
 - **WorkloadForecastDaily** — demand vs. capacity hours per team per day,
   split `demandKind: scheduled | reactive` so compliance-driven work and
-  violation-repair "noise" show as separate series (spec §12).
-- **PartsForecastDaily** — projected on-hand/consumption/stockout per part
-  per day.
+  violation-repair "noise" show as separate series (spec §12). One row per
+  `(date, team, demandKind)`; a `scheduled`-kind row is always emitted (even
+  at zero demand) so the capacity line has no gaps.
+- **PartsForecastDaily** — walks each part's `onHandCount` forward day by
+  day, decrementing by that day's planned consumption across open jobs;
+  `suggestedReorderDate` is the day on-hand would cross `reorderPoint`,
+  backed off by the part's `leadTimeDays`.
 - **CostForecastDaily** — `laborCost`/`partsCost` (synthetic) kept as
-  separate columns from `realFilingFeeCost` (real $, summed from boiler
-  `filing_fee`) — spec §12 is explicit that these must never blend into one
-  unlabeled number.
+  separate columns from `realFilingFeeCost` (real $, only populated for
+  jobs that were actually completed with a real filed fee — never
+  estimated for a not-yet-filed future report) — spec §12 is explicit
+  these must never blend into one unlabeled number.
 
 ## Sync log
 

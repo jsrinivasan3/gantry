@@ -2,6 +2,7 @@ import type { JobType } from "@prisma/client";
 
 import { prisma } from "@/server/db/client";
 import { attachJobParts } from "@/server/scheduling/attachJobParts";
+import { jobLaborHours } from "@/config/jobLaborHours";
 
 const RULE_BY_JOB_TYPE: Record<string, JobType[]> = {
   low: ["BOILER_PERIODIC"],
@@ -89,6 +90,7 @@ export async function deriveBoilerSchedule() {
         status: "PLANNED" as const,
         scheduledStart: nextDue,
         scheduledEnd: nextDue,
+        estimatedLaborHours: jobLaborHours[jobType] ?? 0,
       };
       let jobId: string;
       if (existing) {

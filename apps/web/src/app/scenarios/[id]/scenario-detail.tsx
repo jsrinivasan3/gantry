@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 
 import { trpc } from "@/lib/trpc/client";
 import { Gantt } from "@/components/gantt/Gantt";
+import { ForecastPanel } from "@/app/scenarios/[id]/forecast-panel";
 
 export function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
   const router = useRouter();
   const scenarioQuery = trpc.scenario.get.useQuery({ id: scenarioId });
   const [showAddJob, setShowAddJob] = useState(false);
+  const [tab, setTab] = useState<"gantt" | "forecast">("gantt");
 
   if (scenarioQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading scenario…</p>;
   if (scenarioQuery.error) return <p className="text-sm text-red-600">{scenarioQuery.error.message}</p>;
@@ -34,7 +36,22 @@ export function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
 
       {showAddJob && <AddJobForm scenarioId={scenarioId} onDone={() => setShowAddJob(false)} />}
 
-      <Gantt scenarioId={scenarioId} editable />
+      <div className="flex gap-1 border-b text-sm">
+        <button
+          className={`px-3 py-1.5 ${tab === "gantt" ? "border-b-2 border-black font-medium" : "text-muted-foreground"}`}
+          onClick={() => setTab("gantt")}
+        >
+          Gantt
+        </button>
+        <button
+          className={`px-3 py-1.5 ${tab === "forecast" ? "border-b-2 border-black font-medium" : "text-muted-foreground"}`}
+          onClick={() => setTab("forecast")}
+        >
+          Forecast
+        </button>
+      </div>
+
+      {tab === "gantt" ? <Gantt scenarioId={scenarioId} editable /> : <ForecastPanel scenarioId={scenarioId} />}
     </div>
   );
 }

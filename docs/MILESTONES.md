@@ -87,14 +87,40 @@ left uncommitted).
   row changed in Postgres, Main Schedule row untouched), and added an
   ad-hoc job (1762 → 1763 jobs in the scenario only).
 
-## M5 — Forecasting ⬜
-- `workloadForecast.ts` / `partsForecast.ts` / `costForecast.ts` + shared
-  `engine.ts`; workload splits scheduled-compliance vs. reactive-repair
-  series; cost keeps `real_filing_fee_cost` visually separate from synthetic
-  labor/parts cost.
-- Forecast results screen with linked Recharts time series.
-- **Exit check**: running a forecast from a scenario produces workload/parts/
-  cost charts that visibly distinguish real vs. synthetic inputs.
+## M5 — Forecasting ✅
+- `server/forecasting/{workloadForecast,partsForecast,costForecast,engine}.ts`:
+  workload splits scheduled-compliance vs. reactive-repair demand per team
+  per day against resolved capacity (scenario-specific `CapacityEntry` if
+  present, else the Main Schedule's); parts walks each part's on-hand
+  forward day by day, decrementing by planned consumption, flagging
+  stockout risk and a lead-time-backed-off reorder date; cost keeps
+  `realFilingFeeCost` (real $, only ever appears on actually-filed
+  historical reports — never estimated for a future one) as a column
+  separate from synthetic `laborCost`/`partsCost`.
+- Added a synthetic `jobType -> laborHours` catalog
+  (`src/config/jobLaborHours.ts`), applied the same way as the parts BOM,
+  so jobs have real `estimatedLaborHours` for the engine to use.
+- `forecast.run`/`latest`/`results` tRPC procedures; a scenario's default
+  forecast window is **today − 180 days to today + 365 days** (deliberately
+  spans past + future, not purely forward) — so a chart can show real
+  historical filing-fee spend and synthetic future-projected cost on one
+  connected timeline, which a purely-forward window couldn't.
+- Forecast tab on the scenario page (`forecast-panel.tsx`): monthly-bucketed
+  Recharts — workload (stacked scheduled/reactive bars + capacity line),
+  cost (stacked labor/parts/real-filing-fee bars), and a per-part
+  projected-on-hand line with a reorder-point reference line.
+- **Bug found and fixed during testing**: `deriveDefectFollowups` wasn't
+  scenario-scoped, so after a scenario existed it would (re-)derive a
+  second, spurious Main-Schedule-scoped follow-up from the scenario's own
+  *copy* of a defective job — doubled the defect-followup count (16 → 32).
+  Fixed by scoping the query to `scenarioId: null`; verified back to 16.
+- **Exit check** ✅: live-verified on a full 1762-job scenario copy — cost
+  chart visibly separates real filing-fee dollars (small orange bars, only
+  in months with an actual historical filing) from synthetic parts/labor
+  cost (larger teal/purple bars); workload chart shows the expected
+  seasonal CAT1/CAT5/periodic cadence shape; parts chart shows "Brake Shoe
+  Set" correctly stepping down from 18 to below its reorder point of 6
+  by ~April 2026 given its consumption by every CAT1 test.
 
 ## M6 — Comparison, promotion, polish ⬜
 - Scenario-vs-Main diff view + promotion (reviewed diff required).

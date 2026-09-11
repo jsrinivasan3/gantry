@@ -3,6 +3,7 @@ import { fetchAllSocrataRows, soqlInList } from "@/server/sync/nycOpenData/socra
 import type { ElevatorViolationRow } from "@/server/sync/nycOpenData/types";
 import { withSyncRun, type SyncResult } from "@/server/sync/nycOpenData/upsert";
 import { attachJobParts } from "@/server/scheduling/attachJobParts";
+import { jobLaborHours } from "@/config/jobLaborHours";
 
 const DATASET_ID = "dedp-nh8d";
 
@@ -80,6 +81,7 @@ export async function syncElevatorViolations(bins: readonly string[]): Promise<S
           scheduledStart: today,
           scheduledEnd: today,
           priority: "high",
+          estimatedLaborHours: jobLaborHours.VIOLATION_REPAIR ?? 0,
         },
         // Never overwrite planning changes (dates/team/status) an Admin has
         // since made to this job on re-sync — only the identity fields.

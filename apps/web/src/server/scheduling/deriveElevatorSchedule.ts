@@ -2,6 +2,7 @@ import type { JobType } from "@prisma/client";
 
 import { prisma } from "@/server/db/client";
 import { attachJobParts } from "@/server/scheduling/attachJobParts";
+import { jobLaborHours } from "@/config/jobLaborHours";
 
 const ELEVATOR_RULE_TYPES: JobType[] = ["CAT1_TEST", "CAT5_TEST", "PERIODIC_INSPECTION"];
 
@@ -78,6 +79,7 @@ export async function deriveElevatorSchedule() {
         status: "PLANNED" as const,
         scheduledStart: nextDue,
         scheduledEnd: nextDue,
+        estimatedLaborHours: jobLaborHours[rule.jobType] ?? 0,
       };
       let jobId: string;
       if (existing) {
