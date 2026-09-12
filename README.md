@@ -175,3 +175,73 @@ npx prisma studio       # browse the database in a GUI
 npx prisma migrate dev  # apply schema changes
 npx prisma db seed      # re-run the seed script
 ```
+
+## Screenshots
+
+Every screen below is a real screenshot against a live-synced Manhattan
+portfolio — the numbers, dates, and warnings are actual data, not mockups.
+
+### Sign in
+
+One-click seeded demo accounts (Admin/Planner/Viewer) for trying out
+role-based access without hunting for credentials, or sign in manually.
+
+![Sign in](docs/screenshots/sign-in.png)
+
+### Dashboard
+
+Landing page after sign-in: portfolio-wide stats (elevators, boilers, open
+jobs, active warnings), quick links into the rest of the app, and a
+reminder of which numbers are real vs. rule-derived vs. synthetic.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Main Schedule
+
+The live, authoritative schedule — every real elevator/boiler asset
+grouped by building, with compliance jobs plotted on a searchable,
+zoomable Gantt chart. The banners above it are real: overdue compliance
+tests, approaching defect-correction deadlines, and jobs with no real
+filing on record yet (never given a fabricated date).
+
+![Main Schedule](docs/screenshots/main-schedule.png)
+
+### Scenarios
+
+A list of sandboxes — each one a full, isolated deep copy of the Main
+Schedule that a Planner or Admin can rearrange without touching the real
+schedule.
+
+![Scenarios](docs/screenshots/scenarios.png)
+
+### Scenario — Gantt
+
+Inside a scenario, the same Gantt becomes editable: click any bar to
+reschedule it or assign a crew. Changes here are invisible to the Main
+Schedule until explicitly promoted.
+
+![Scenario Gantt](docs/screenshots/scenario-gantt.png)
+
+### Scenario — Forecast
+
+Runs the workload/parts/cost engine against the scenario's schedule.
+Stat tiles and the workload chart show scheduled vs. reactive demand
+against crew capacity; a separate chart keeps real boiler filing-fee
+dollars visually distinct from synthetic labor/parts cost.
+
+![Scenario Forecast](docs/screenshots/scenario-forecast.png)
+
+### Scenario — Diff & Promote
+
+The reviewed diff required before any change reaches the real schedule:
+every changed job and its changed fields, a Draft → Submitted → Promoted
+status tracker, and the actions to submit (Planner) or approve (Admin).
+
+![Scenario Diff & Promote](docs/screenshots/scenario-diff.png)
+
+### Admin
+
+The live NYC Open Data sync: trigger a sync, watch its scope (borough +
+building count), and see full sync history with per-source status.
+
+![Admin](docs/screenshots/admin.png)
